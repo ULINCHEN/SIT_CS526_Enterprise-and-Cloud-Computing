@@ -1,0 +1,53 @@
+﻿<Properties StartupConfiguration="{F36892B9-E058-4681-AB85-EF031AD41F45}|https">
+  <MultiItemStartupConfigurations />
+  <MonoDevelop.Ide.Workbench ActiveDocument="../../../../.microsoft/usersecrets/aspnet-ImageSharingWithCloud-8a2c73ff-bd8a-4ad1-9aba-723f013a6428/secrets.json">
+    <Files>
+      <File FileName="Program.cs" Line="36" Column="34" />
+      <File FileName="appsettings.json" />
+      <File FileName="DAL/StorageConfig.cs" Line="38" Column="29" />
+      <File FileName="../../../../.microsoft/usersecrets/aspnet-ImageSharingWithCloud-8a2c73ff-bd8a-4ad1-9aba-723f013a6428/secrets.json" Line="1" Column="1" />
+      <File FileName="appsettings.Development.json" />
+      <File FileName="DAL/ImageStorage.cs" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="ImageSharingWithCloud" expanded="True">
+            <Node name="ImageSharingWithCloud" expanded="True" selected="True">
+              <Node name="Dependencies" expanded="True" />
+              <Node name="Controllers" expanded="True" />
+              <Node name="DAL" expanded="True" />
+              <Node name="Models" expanded="True">
+                <Node name="ViewModels" expanded="True" />
+              </Node>
+              <Node name="appsettings.json" expanded="True" />
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore>
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="63" column="1" />
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="65" column="1" />
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="64" column="1" />
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="66" column="1" />
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="68" column="1" />
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="69" column="1" />
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="72" column="1" />
+      <Breakpoint enabled="false" file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/StorageConfig.cs" relfile="DAL/StorageConfig.cs" line="71" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="107" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="34" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="36" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="38" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="37" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="41" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="40" column="1" />
+      <Breakpoint file="/Users/linu/Desktop/cs526/Assignment3-Code/ImageSharingWithCloud/DAL/ImageStorage.cs" relfile="DAL/ImageStorage.cs" line="42" column="1" />
+    </BreakpointStore>
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.ItemProperties.ImageSharingWithCloud PreferredExecutionTarget="/Applications/Google Chrome.app" />
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+</Properties>
