@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "restore": {
+    "\\\\Mac\\Home\\Documents\\Teach\\CS526\\Projects\\vs2022-net7_0\\ImageSharingWithServerless\\ImageSharingModels\\ImageSharingModels\\ImageSharingModels.csproj": {}
+  },
+  "projects": {
+    "\\\\Mac\\Home\\Documents\\Teach\\CS526\\Projects\\vs2022-net7_0\\ImageSharingWithServerless\\ImageSharingModels\\ImageSharingModels\\ImageSharingModels.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "\\\\Mac\\Home\\Documents\\Teach\\CS526\\Projects\\vs2022-net7_0\\ImageSharingWithServerless\\ImageSharingModels\\ImageSharingModels\\ImageSharingModels.csproj",
+        "projectName": "ImageSharingWithServerless",
+        "projectPath": "\\\\Mac\\Home\\Documents\\Teach\\CS526\\Projects\\vs2022-net7_0\\ImageSharingWithServerless\\ImageSharingModels\\ImageSharingModels\\ImageSharingModels.csproj",
+        "packagesPath": "C:\\Users\\dduggan\\.nuget\\packages\\",
+        "outputPath": "\\\\Mac\\Home\\Documents\\Teach\\CS526\\Projects\\vs2022-net7_0\\ImageSharingWithServerless\\ImageSharingWithServerless\\ImageSharingWithServerless\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\dduggan\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net7.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net7.0": {
+            "targetAlias": "net7.0",
+            "projectReferences": {
+              "\\\\Mac\\Home\\Documents\\Teach\\CS526\\Projects\\vs2022-net7_0\\ImageSharingWithServerless\\ImageSharingModels\\ImageSharingModels\\ImageSharingModels.csproj": {
+                "projectPath": "\\\\Mac\\Home\\Documents\\Teach\\CS526\\Projects\\vs2022-net7_0\\ImageSharingWithServerless\\ImageSharingModels\\ImageSharingModels\\ImageSharingModels.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net7.0": {
+          "targetAlias": "net7.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.100\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

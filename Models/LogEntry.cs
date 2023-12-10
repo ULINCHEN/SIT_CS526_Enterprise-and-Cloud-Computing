@@ -1,9 +1,7 @@
 ﻿using Azure;
 using Azure.Data.Tables;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using System;
 
-namespace ImageSharingWithCloud.Models
+namespace ImageSharingWithServerless.Models
 {
     public class LogEntry : ITableEntity
     {
@@ -12,8 +10,6 @@ namespace ImageSharingWithCloud.Models
         public string PartitionKey { get; set; }
 
         public string RowKey { get; set; }
-
-        public string UserId { get; set; }
 
         public string Username { get; set; }
 
@@ -34,10 +30,8 @@ namespace ImageSharingWithCloud.Models
             PartitionKey = EntryDate.ToString("MMddyyyy");
         }
 
-        public LogEntry(string userId, string imageId) : this()
+        public LogEntry(string imageId) : this()
         {
-            UserId = userId;
-
             ImageId = imageId;
 
             RowKey = string.Format("{0}:{1}:{2}",

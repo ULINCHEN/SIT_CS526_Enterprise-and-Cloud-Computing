@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ImageSharingWithCloud.Models.ViewModels
+namespace ImageSharingWithServerless.Models.ViewModels
 {
 	public class ImageViewsModel
     {

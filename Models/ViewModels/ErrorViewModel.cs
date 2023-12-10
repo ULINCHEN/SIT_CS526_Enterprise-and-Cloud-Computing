@@ -1,6 +1,6 @@
 using System;
 
-namespace ImageSharingWithCloud.Models
+namespace ImageSharingWithServerless.Models.ViewModels
 {
     public class ErrorViewModel
     {

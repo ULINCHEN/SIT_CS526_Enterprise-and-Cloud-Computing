@@ -1,6 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 
-namespace ImageSharingWithCloud.DAL
+namespace ImageSharingWithServerless.DAL
 {
     public class StorageConfig
     {
@@ -38,6 +38,25 @@ namespace ImageSharingWithCloud.DAL
         public const string ImageStorageAccessKey = "Credentials:ImageStorage:AccessKey";
 
         public const string ImageStorageContainer = "Data:ImageStorage:Container";
+
+        /*
+         * Keys for queues for serverless
+         */
+        public const string QueuesUri = "Data:Queues:Uri";
+
+        public const string QueuesAccountName = "Data:Queues:AccountName";
+
+        public const string QueuesAccessKey = "Credentials:Queues:AccessKey";
+
+        public const string ApprovalRequestsQueue = "Data:Queues:ApprovalRequestsQ";
+
+        public const string ApprovedImagesQueue = "Data:Queues:ApprovedImagesQ";
+
+        public const string RejectedImagesQueue = "Data:Queues:RejectedImagesQ";
+
+        public const string VisibilityTimeout = "Data:Queues:VisibilityTimeout";
+
+        public const string MaxApprovalRequests = "Data:Queues:MaxApprovalRequests";
 
         /*
          * Keys for log storage (Table) metadata.
