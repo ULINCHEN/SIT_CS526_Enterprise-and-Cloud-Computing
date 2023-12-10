@@ -1,25 +1,30 @@
 ﻿using Azure.Core;
+using Azure.Data.Tables;
 using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using ImageSharingWithCloud.Models;
+using Azure.Storage.Queues;
+using Azure.Storage.Queues.Models;
+using ImageSharingModels;
+using ImageSharingWithServerless.Models;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.EntityFrameworkCore;
+using static ImageSharingWithServerless.DAL.IImageStorage;
 
-namespace ImageSharingWithCloud.DAL
+namespace ImageSharingWithServerless.DAL
 {
     public class ImageStorage : IImageStorage
     {
-        protected ILogger<ImageStorage> logger; // 日志
+        protected ILogger<ImageStorage> logger;
 
-        protected CosmosClient imageDbClient; // consmos clinet
+        protected CosmosClient imageDbClient;
 
-        protected string imageDatabase; 
+        protected string imageDatabase;
 
-        protected Container imageDbContainer; // 图片 metadata 存放
+        protected Container imageDbContainer;
 
-        protected BlobContainerClient blobContainerClient; // 图片文件存储
+        protected BlobContainerClient blobContainerClient;
 
 
         public ImageStorage(IConfiguration configuration,
@@ -34,44 +39,28 @@ namespace ImageSharingWithCloud.DAL
             this.imageDbClient = imageDbClient;
 
             this.imageDatabase = configuration[StorageConfig.ImageDbDatabase];
-            string imageContainer = configuration[StorageConfig.ImageDbContainer];
-            logger.LogInformation("ImageDb (Cosmos DB) is being accessed here: " + imageDbClient.Endpoint);
-            logger.LogInformation("ImageDb using database {0} and container {1}",
-                imageDatabase, imageContainer);
-            Database imageDbDatabase = imageDbClient.GetDatabase(imageDatabase);
-            this.imageDbContainer = imageDbDatabase.GetContainer(imageContainer);
+
+            this.imageDbContainer = GetImageDbContainer(configuration);
 
             /*
              * Use Blob storage client to store images in the cloud.
              */
-            string imageStorageUriFromConfig = configuration[StorageConfig.ImageStorageUri];
-            if (imageStorageUriFromConfig == null)
-            {
-                throw new ArgumentNullException("Missing Blob service URI in configuration: " + StorageConfig.ImageStorageUri);
-            }
-            Uri imageStorageUri = new Uri(imageStorageUriFromConfig);
-
-
-
-            // TODO get the shared key credential for accessing blob storage.
-            
-            //Console.WriteLine("ImageStorageAccessKey:" + configuration[StorageConfig.ImageStorageAccessKey]);
-            //Console.WriteLine("ImageStorageAccessKey:" + configuration[StorageConfig.ImageStorageAccessKey]);
-
-            var ISAN = "youlinchen";
-            var ISAK = "bdAkD2/XcZtvlSN3+42Um6ED2E5yHuFc3YJwFjT8bz2FjutsaHUe0OmnTPjOY07oSi8VLPDtE/ed+AStXZcgBQ==";
-
-            StorageSharedKeyCredential credential = new StorageSharedKeyCredential(ISAN, ISAK);
-            //StorageSharedKeyCredential credential = new StorageSharedKeyCredential( configuration[StorageConfig.ImageStorageAccountName], configuration[StorageConfig.ImageStorageAccessKey]);
-            BlobServiceClient blobServiceClient = new BlobServiceClient(imageStorageUri, credential, null);
-
-            string storageContainer = configuration[StorageConfig.ImageStorageContainer];
-            if (storageContainer == null)
-            {
-                throw new ArgumentNullException("Missing Blob container name in configuration: " + StorageConfig.ImageStorageContainer);
-            }
-            this.blobContainerClient = blobServiceClient.GetBlobContainerClient(storageContainer);
+            this.blobContainerClient = GetBlobContainerClient(configuration);
             logger.LogInformation("ImageStorage (Blob storage) being accessed here: " + blobContainerClient.Uri);
+
+            /*
+             * Use queues for asynchronous triggers of serverless functions.
+             */
+            this.approvalRequestsQueueName = configuration[StorageConfig.ApprovalRequestsQueue];
+            this.approvedImagesQueueName = configuration[StorageConfig.ApprovedImagesQueue];
+            this.rejectedImagesQueueName = configuration[StorageConfig.RejectedImagesQueue];
+
+            // TODO Set the queue clients for approval requests, approved and rejected images (use createQueueClient).
+            // You should log the queue URIs here to ensure this has succeeded.
+
+
+            this.MaxApprovalRequests = configuration.GetValue<int>(StorageConfig.MaxApprovalRequests);
+            this.VisibilityTimeout = TimeSpan.FromSeconds(configuration.GetValue<int>(StorageConfig.VisibilityTimeout));
         }
 
         /**
@@ -82,11 +71,11 @@ namespace ImageSharingWithCloud.DAL
             string imageDbUri = configuration[StorageConfig.ImageDbUri];
             if (imageDbUri == null)
             {
-                throw new ArgumentNullException("Missing configuration: " + configuration[StorageConfig.ImageDbUri]);
+                throw new ArgumentNullException("Missing configuration: " + StorageConfig.ImageDbUri);
             }
             string imageDbAccessKey = configuration[StorageConfig.ImageDbAccessKey];
 
-            CosmosClientOptions cosmosClientOptions = new CosmosClientOptions();
+            CosmosClientOptions cosmosClientOptions = null;
             //if (environment.IsDevelopment())
             //{
             //    cosmosClientOptions = new CosmosClientOptions()
@@ -103,46 +92,95 @@ namespace ImageSharingWithCloud.DAL
             //        ConnectionMode = ConnectionMode.Gateway
             //    };
             //}
-            var key = "MQG3TkGUO4jfDfhQWQsYJkdEjEL9fFboASf4F1eBjpg1UdPdeJynRDu4Iz4rrOdKGt7ByGFajvcNACDbWTo65g==";
-            CosmosClient imageDbClient = new CosmosClient(imageDbUri, key, cosmosClientOptions);
+
+            CosmosClient imageDbClient = new CosmosClient(imageDbUri, imageDbAccessKey, cosmosClientOptions);
             return imageDbClient;
         }
 
+        /**
+         * Use this to generate the Cosmos DB container client
+         */
+        private Container GetImageDbContainer(IConfiguration configuration)
+        {
+            string imageContainer = configuration[StorageConfig.ImageDbContainer];
+            logger.LogDebug("ImageDb (Cosmos DB) is being accessed here: " + imageDbClient.Endpoint);
+            logger.LogDebug("ImageDb using database {0} and container {1}",
+                imageDatabase, imageContainer);
+            Database imageDbDatabase = imageDbClient.GetDatabase(imageDatabase);
+            return imageDbDatabase.GetContainer(imageContainer);
+        }
+
+        /**
+         * Use this to generate the blob container client
+         */
+        private static BlobContainerClient GetBlobContainerClient(IConfiguration configuration)
+        {
+            string imageStorageUriFromConfig = configuration[StorageConfig.ImageStorageUri];
+            if (imageStorageUriFromConfig == null)
+            {
+                throw new ArgumentNullException("Missing Blob service URI in configuration: " + StorageConfig.ImageStorageUri);
+            }
+            Uri imageStorageUri = new Uri(imageStorageUriFromConfig);
+
+            StorageSharedKeyCredential credential = null;
+            // TODO get the shared key credential for accessing blob storage.
+
+
+            BlobServiceClient blobServiceClient = new BlobServiceClient(imageStorageUri, credential, null);
+
+            string storageContainer = configuration[StorageConfig.ImageStorageContainer];
+            if (storageContainer == null)
+            {
+                throw new ArgumentNullException("Missing Blob container name in configuration: " + StorageConfig.ImageStorageContainer);
+            }
+            return blobServiceClient.GetBlobContainerClient(storageContainer);
+
+        }
+
+
         /*
-         * 
+         * Initialize image database and queues.
          */
         public async Task InitImageStorage()
         {
-
-            logger.LogInformation("Initializing image storage (Cosmos DB)....");
+            logger.LogInformation("Initializing image storage (Cosmos DB and Blob Storage)....");
             await imageDbClient.CreateDatabaseIfNotExistsAsync(imageDatabase);
+            await blobContainerClient.CreateIfNotExistsAsync();
+            IList<Image> images = await GetAllImagesInfoAsync();
+            foreach (Image image in images)
+            {
+                await RemoveImageAsync(image);
+            }
             logger.LogInformation("....initialization completed.");
+
+
+            var queueResponse = await approvalRequests.CreateIfNotExistsAsync();
+            if (queueResponse != null)
+            {
+                logger.LogInformation("Confirmed approval request queue: {0}", this.approvalRequestsQueueName);
+            }
+
+            queueResponse = await approvedImages.CreateIfNotExistsAsync();
+            if (queueResponse != null)
+            {
+                logger.LogInformation("Confirmed approved requests queue: {0}", this.approvedImagesQueueName);
+            }
+
+            queueResponse = await rejectedImages.CreateIfNotExistsAsync();
+            if (queueResponse != null)
+            {
+                logger.LogInformation("Confirmed rejected requests queue: {0}", this.rejectedImagesQueueName);
+            }
+
+            await approvalRequests.ClearMessagesAsync();
+            await approvedImages.ClearMessagesAsync();
+            await rejectedImages.ClearMessagesAsync();
         }
 
-        /*
-         * Save image metadata in the database.
-         */
-        public async Task<string> SaveImageInfoAsync(Image image)
-        {
-            image.Id = image.Id;
-            // TODO
-            
-            logger.LogInformation("Saving Image info in cosmoDB...");
-            logger.LogInformation("Image id -> " + image.Id);
-            logger.LogInformation("Partition Key is user id -> " + image.UserId);
-            
-            var res = await imageDbContainer.CreateItemAsync<Image>(image, new PartitionKey(image.UserId));
-            
-            logger.LogInformation("Saving image info process finished.");
-            
-            return res.ToString();
-
-        }
 
         public async Task<Image> GetImageInfoAsync(string userId, string imageId)
         {
-            var res = await imageDbContainer.ReadItemAsync<Image>(imageId, new PartitionKey(userId));
-            return res;
+            return await imageDbContainer.ReadItemAsync<Image>(imageId, new PartitionKey(userId));
         }
 
         public async Task<IList<Image>> GetAllImagesInfoAsync()
@@ -171,21 +209,8 @@ namespace ImageSharingWithCloud.DAL
                                         .WithPartitionKey<Image>(user.Id)
                                         .Where(im => im.Valid && im.Approved);
             // TODO complete this
-            var iterator = query.ToFeedIterator();
-
-            while (iterator.HasMoreResults)
-            {
-                FeedResponse<Image> response = await iterator.ReadNextAsync();
-
-                foreach (var item in response)
-                {
-                    results.Add(item);
-                }
-            }
 
             return results;
-
-
         }
 
         public async Task UpdateImageInfoAsync(Image image)
@@ -219,12 +244,12 @@ namespace ImageSharingWithCloud.DAL
             try
             {
                 await RemoveImageFileAsync(image);
-                await imageDbContainer.DeleteItemAsync<Image>(image.Id, new PartitionKey(image.UserId));
             }
             catch (Azure.RequestFailedException e)
             {
                 logger.LogError("Exception while removing blob image: ", e.StackTrace);
             }
+            await imageDbContainer.DeleteItemAsync<Image>(image.Id, new PartitionKey(image.UserId));
         }
 
 
@@ -233,7 +258,8 @@ namespace ImageSharingWithCloud.DAL
          */
         protected static string BlobName(string userId, string imageId)
         {
-            return "image-" + imageId + ".jpg";
+            // return "image-" + imageId + ".jpg";
+            return imageId;
         }
 
         protected string BlobUri(string userId, string imageId)
@@ -241,7 +267,7 @@ namespace ImageSharingWithCloud.DAL
             return blobContainerClient.Uri + "/" + BlobName(userId, imageId);
         }
 
-        public async Task SaveImageFileAsync(IFormFile imageFile, string userId, string imageId)
+        public Task SaveImageFileAsync(IFormFile imageFile, string userId, string imageId, IDictionary<string, string> metadata)
         {
             logger.LogInformation("Saving image with id {0} to blob storage", imageId);
 
@@ -253,17 +279,12 @@ namespace ImageSharingWithCloud.DAL
              * 
              * Tip: You need to reset the stream position to the beginning before uploading:
              * See https://stackoverflow.com/a/47611795.
+             * 
+             * Do NOT await the finishing of the upload!
              */
-            
-            
-            logger.LogInformation("Start upload image file to blob storage...");
-            await using (var stream = imageFile.OpenReadStream())
-            {
-                stream.Seek(0, SeekOrigin.Begin); 
-                
-                await blobContainerClient.UploadBlobAsync(BlobName(userId, imageId), stream);
-            }
-            logger.LogInformation("Image file upload process finished!");
+
+            return Task.CompletedTask;
+
         }
 
         protected async Task RemoveImageFileAsync(Image image)
@@ -278,9 +299,100 @@ namespace ImageSharingWithCloud.DAL
             return BlobUri(userId, imageId);
         }
 
-        // private bool isOkImage(Image image)
-        // {
-        //     return image.Valid && image.Approved;
-        // }
+        private bool isOkImage(Image image)
+        {
+            return image.Valid && image.Approved;
+        }
+
+        /*
+         * API for image approval.
+         */
+
+        // https://learn.microsoft.com/en-us/azure/storage/queues/storage-dotnet-how-to-use-queues?tabs=dotnet
+
+        // https://learn.microsoft.com/en-us/dotnet/api/azure.storage.queues.queueclient?view=azure-dotnet
+
+
+        protected string approvalRequestsQueueName;
+
+        protected string approvedImagesQueueName;
+
+        protected string rejectedImagesQueueName;
+
+        protected QueueClient approvalRequests;
+
+        protected QueueClient approvedImages;
+
+        protected QueueClient rejectedImages;
+
+        /*
+         * Maximum number of requests to be processed in one go (should be in app settings)
+         */
+        protected int MaxApprovalRequests;
+
+        /*
+         * How long approval request messages are invisible while they are being processed (should be in app settings)
+         */
+        protected TimeSpan VisibilityTimeout;
+
+        private static QueueClient createQueueClient(Uri queueUri, string queueName, string accountName, string accessKey)
+        {
+            /*
+             * Queue when reading messages expects Base64 encoding for payload, but does not
+             * automatically encode with Base64 when sending, so set it here as default behavior.
+             */
+            string connectionString = $"DefaultEndpointsProtocol=http;AccountName={accountName};AccountKey={accessKey};QueueEndpoint={queueUri}";
+            QueueClient client = new QueueClient(connectionString, queueName, new QueueClientOptions
+            {
+                MessageEncoding = QueueMessageEncoding.Base64
+            });
+            return client;
+        }
+
+        /*
+         * Get a list of images awaiting approval (from the approval-requests queue).
+         */
+        public async Task<IEnumerable<PendingApproval>> AwaitingApprovalAsync()
+        {
+            QueueMessage[] messages = await approvalRequests.ReceiveMessagesAsync(MaxApprovalRequests, VisibilityTimeout);
+            logger.LogDebug($"Getting list of approval requests from message queue ({messages.Length} messages)....");
+            List<PendingApproval> pending = new List<PendingApproval>();
+            foreach (QueueMessage message in messages)
+            {
+                Image image = ImageProperties.messageTextToImage(message.MessageText);
+                logger.LogDebug($"...approval request: {image.Uri}...");
+                PendingApproval pendingApproval = new PendingApproval()
+                {
+                    image = image,
+                    messageId = message.MessageId,
+                    messagePopReceipt = message.PopReceipt
+                };
+                pending.Add(pendingApproval);
+            }
+            return pending;
+        }
+
+        /*
+         * An image is approved: remove it from the approval-requests queue and add it to the approved-images queue.
+         */
+        public async Task ApproveAsync(PendingApproval pending)
+        {
+            logger.LogDebug($"Image has been approved: {pending.image.Uri}");
+            string messageText = ImageProperties.imageToMessageText(pending.image);
+            await approvedImages.SendMessageAsync(messageText);
+            await approvalRequests.DeleteMessageAsync(pending.messageId, pending.messagePopReceipt);
+        }
+
+        /*
+         * An image is rejected: remove it from the approval-requests queue and add it to the rejected-images queue.
+         */
+        public async Task RejectAsync(PendingApproval pending)
+        {
+            logger.LogDebug($"Image has been rejected: {pending.image.Uri}");
+            // TODO remove from requests queue and add to rejects queue
+
+        }
+
+
     }
 }

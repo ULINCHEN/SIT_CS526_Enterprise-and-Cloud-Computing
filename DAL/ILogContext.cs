@@ -1,15 +1,15 @@
 ﻿using Azure;
-using ImageSharingWithCloud.Models;
-using System.Threading.Tasks;
+using ImageSharingWithServerless.Models;
+using ImageSharingWithServerless.Models.ViewModels;
 
-namespace ImageSharingWithCloud.DAL
+namespace ImageSharingWithServerless.DAL
 {
     /**
     * Interface for logging image views in the application.
     */
     public interface ILogContext
     {
-        public Task AddLogEntryAsync(string userId, string userName, ImageView imageView);
+        public Task AddLogEntryAsync(string userName, ImageView imageView);
 
         public AsyncPageable<LogEntry> Logs(bool todayOnly);
     }

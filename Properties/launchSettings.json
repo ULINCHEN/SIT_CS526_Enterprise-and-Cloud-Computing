@@ -3,26 +3,26 @@
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
     "iisExpress": {
-      "applicationUrl": "http://localhost:12783",
-      "sslPort": 44375
+      "applicationUrl": "http://localhost:44854",
+      "sslPort": 44347
     }
   },
   "profiles": {
-    "http": {
+    "TestImageSharingWithServerless": {
       "commandName": "Project",
       "launchBrowser": true,
-      "applicationUrl": "http://localhost:5216",
+      "applicationUrl": "https://localhost:7147;http://localhost:5067",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Production"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true
     },
-    "https": {
+    "ImageSharingWithServerless": {
       "commandName": "Project",
       "launchBrowser": true,
-      "applicationUrl": "https://localhost:7140;http://localhost:5216",
+      "applicationUrl": "https://localhost:7147;http://localhost:5067",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Production"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "dotnetRunMessages": true
     },
@@ -30,7 +30,7 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Production"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
   }

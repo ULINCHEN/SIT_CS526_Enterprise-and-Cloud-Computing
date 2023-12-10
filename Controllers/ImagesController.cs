@@ -1,16 +1,19 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ImageSharingWithCloud.DAL;
-using ImageSharingWithCloud.Models;
+using ImageSharingWithServerless.DAL;
+using ImageSharingModels;
+using ImageSharingWithServerless.Models;
+using ImageSharingWithServerless.Models.ViewModels;
 
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Azure;
+using Newtonsoft.Json;
+using static ImageSharingWithServerless.DAL.IImageStorage;
 
-namespace ImageSharingWithCloud.Controllers
+namespace ImageSharingWithServerless.Controllers
 {
     // TODO require authorization by default
-    [Authorize]
     public class ImagesController : BaseController
     {
         protected ILogContext logContext;
@@ -32,7 +35,7 @@ namespace ImageSharingWithCloud.Controllers
 
 
         // TODO
-        [HttpGet]
+
         public ActionResult Upload()
         {
             CheckAda();
@@ -43,13 +46,12 @@ namespace ImageSharingWithCloud.Controllers
         }
 
         // TODO prevent CSRF
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+
         public async Task<ActionResult> Upload(ImageView imageView)
         {
             CheckAda();
 
-            logger.LogInformation("Processing the upload of an image....");
+            logger.LogDebug("Processing the upload of an image....");
 
             await TryUpdateModelAsync(imageView);
 
@@ -59,7 +61,7 @@ namespace ImageSharingWithCloud.Controllers
                 return View();
             }
 
-            logger.LogInformation("...getting the current logged-in user....");
+            logger.LogDebug("...getting the current logged-in user....");
             ApplicationUser user = await GetLoggedInUser();
 
             if (imageView.ImageFile == null || imageView.ImageFile.Length <= 0)
@@ -68,100 +70,76 @@ namespace ImageSharingWithCloud.Controllers
                 return View(imageView);
             }
 
-            logger.LogInformation("....saving image metadata in the database....");
+            string imageId = Guid.NewGuid().ToString();
 
-            var imageId = Guid.NewGuid().ToString();
+            /*
+             * We will attach metadata for image to upload to blob storage.
+             * Once upload is finished, image metadata will be saved in Cosmos DB.
+             */
+            IDictionary<string, string> metadata = new Dictionary<string, string>();
+            metadata[ImageProperties.USER_KEY] = user.Id;
+            metadata[ImageProperties.ID_KEY] = imageId;
+            metadata[ImageProperties.USERNAME_KEY] = user.UserName;
+            metadata[ImageProperties.CAPTION_KEY] = imageView.Caption;
+            metadata[ImageProperties.DESCRIPTION_KEY] = imageView.Description;
+            DateTime dateTakenUtc = DateTime.SpecifyKind(imageView.DateTaken, DateTimeKind.Utc);
+            metadata[ImageProperties.DATE_TAKEN_KEY] = JsonConvert.SerializeObject(dateTakenUtc);
+            metadata[ImageProperties.URL_KEY] = imageStorage.ImageUri(user.Id, imageId);
 
-            // TODO save image metadata in the database 
+            logger.LogDebug("...saving image file to blob storage....");
 
-            
-            Image imageMetadata = new Image
-            {
-                Id = imageId,
-                Caption = imageView.Caption ?? "No data",
-                Description = imageView.Description ?? "No data.",
-                DateTaken = DateTime.Now,
-                UserId = user.Id,
-                UserName = user.UserName,
-                Valid = true,
-                Approved = true
-            };
+            // TODO Save image file on disk
+            // 1. Be sure to include metadata, which will be processed by Azure function
+            // 2. No need to await finish of upload! (catch and log exceptions on upload thread)
+            // Because this call is not awaited, execution of the current method continues before the call is completed
 
-            imageView.Id = imageId;
-            logger.LogInformation("Image metadata created!");
-            logger.LogInformation("imageId -> " + imageMetadata.Id);
-            logger.LogInformation("Caption -> " + imageMetadata.Caption);
-            logger.LogInformation("Description -> " + imageMetadata.Description);
-            logger.LogInformation("DateTaken -> " + imageMetadata.DateTaken);
-            logger.LogInformation("UserId -> " + imageMetadata.UserId);
-            logger.LogInformation("UserId -> " + imageMetadata.UserName);
-            
 
-            var result = await imageStorage.SaveImageInfoAsync(imageMetadata);
-            logger.LogInformation("Save Image metadata in cosmoDb result -> " + result);
-
-            // end TODO
-
-            logger.LogInformation("...saving image file on disk....");
-
-            // TODO save image file on disk
-
-            await imageStorage.SaveImageFileAsync(imageView.ImageFile, user.Id, imageId);
-
-            logger.LogDebug("....forwarding to the details page, image Id = "+imageId + " && user id = " + user.Id);
-
-            var username = user.UserName;
-            await logContext.AddLogEntryAsync(user.Id, username, imageView);
-
-            return RedirectToAction("Details", new { UserId = user.Id, Id = imageId });
+            ViewBag.Message = "Image uploaded!";
+            return View(new ImageView());
         }
 
         // TODO
-        // [HttpGet]
-        // public ActionResult Query()
-        // {
-        //     CheckAda();
-        //
-        //     ViewBag.Message = "";
-        //     return View();
-        // }
+
+        public ActionResult Query()
+        {
+            CheckAda();
+
+            ViewBag.Message = "";
+            return View();
+        }
 
         // TODO
-        [HttpGet]
+
         public async Task<ActionResult> Details(string UserId, string Id)
         {
             CheckAda();
-            
-            logger.LogDebug("--------In Details methods --------");
-            logger.LogDebug("Pass in value...");
-            logger.LogDebug("UserId -> " + UserId);
-            logger.LogDebug("Id -> " + Id);
-            
+
             Image image = await imageStorage.GetImageInfoAsync(UserId, Id);
             if (image == null)
             {
                 return RedirectToAction("Error", "Home", new { ErrId = "Details: " + Id });
             }
 
-            ImageView imageView = new ImageView
-            {
-                Id = image.Id,
-                Caption = image.Caption,
-                Description = image.Description,
-                DateTaken = image.DateTaken,
-                UserName = image.UserName,
-                UserId = image.UserId
-            };
-            ;
+            ImageView imageView = new ImageView();
+            imageView.Id = image.Id;
+            imageView.Caption = image.Caption;
+            imageView.Description = image.Description;
+            imageView.DateTaken = image.DateTaken;
+            imageView.Uri = imageStorage.ImageUri(image.UserId, image.Id);
 
-            // TODO Log this view of the image
-            logger.LogInformation("Image view: UserId = {UserId}, ImageID = {ImageId}", UserId, Id);
+            imageView.UserName = image.UserName;
+            imageView.UserId = image.UserId;
+
+            string thisUser = this.User.Identity.Name;
+            // TODO Log this view of the image asynchronously
+            // Because this call is not awaited, execution of the current method continues before the call is completed
+
 
             return View(imageView);
         }
 
         // TODO
-        [HttpGet]
+
         public async Task<ActionResult> Edit(string UserId, string Id)
         {
             CheckAda();
@@ -192,8 +170,7 @@ namespace ImageSharingWithCloud.Controllers
         }
 
         // TODO prevent CSRF
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+
         public async Task<ActionResult> DoEdit(string UserId, string Id, ImageView imageView)
         {
             CheckAda();
@@ -227,7 +204,7 @@ namespace ImageSharingWithCloud.Controllers
         }
 
         // TODO
-        [HttpGet]
+
         public async Task<ActionResult> Delete(string UserId, string Id)
         {
             CheckAda();
@@ -254,8 +231,7 @@ namespace ImageSharingWithCloud.Controllers
         }
 
         // TODO prevent CSRF
-        [HttpPost]
-        [ValidateAntiForgeryToken]
+
         public async Task<ActionResult> DoDelete(string UserId, string Id)
         {
             CheckAda();
@@ -278,7 +254,7 @@ namespace ImageSharingWithCloud.Controllers
         }
 
         // TODO
-        [HttpGet]
+
         public async Task<ActionResult> ListAll()
         {
             CheckAda();
@@ -290,7 +266,7 @@ namespace ImageSharingWithCloud.Controllers
         }
 
         // TODO
-        [HttpGet]
+
         public async Task<IActionResult> ListByUser()
         {
             CheckAda();
@@ -304,50 +280,28 @@ namespace ImageSharingWithCloud.Controllers
         }
 
         // TODO
-        [HttpGet]
+
         public async Task<ActionResult> DoListByUser(string Id)
         {
             CheckAda();
 
             // TODO list all images uploaded by the user in userView
-            ApplicationUser user = await GetLoggedInUser();
-            ViewBag.UserId = user.Id;
-            
-            var imageList = await imageStorage.GetAllImagesInfoAsync();
 
-            IList<Image> res = new List<Image>();
-
-             foreach (var image in imageList)
-             {
-                 if (image.UserId == Id) res.Add(image);
-             }
-            
-            // 创建一个 UserView 对象，用于在视图中显示图片
-            // userView userView = new UserView
-            // {
-            //     Id = Id,
-            //     UserName = userImages.FirstOrDefault()?.UserName, 
-            //     Password = null, 
-            //     ADA = false 
-            // };
-            
-            
-            return View("ListAll", res);
+            return null;
             // End TODO
 
         }
 
         // TODO
-        [HttpGet]
+
         public ActionResult ImageViews()
         {
             CheckAda();
             return View();
         }
 
-
         // TODO
-        [HttpGet]
+
         public ActionResult ImageViewsList(string Today)
         {
             CheckAda();
@@ -357,12 +311,55 @@ namespace ImageSharingWithCloud.Controllers
             return View(entries);
         }
 
+
+        /*
+         * Image Approval actions.
+         */
+
+
+        public async Task<IActionResult> Approve()
+        {
+            CheckAda();
+
+            logger.LogDebug("Retrieving approval requests....");
+            var pendingApprovals = await imageStorage.AwaitingApprovalAsync();
+            List<SelectListItem> items = new List<SelectListItem>();
+            foreach (var pendingApproval in pendingApprovals)
+            {
+                string uri = pendingApproval.image.Uri;
+                string json = JsonConvert.SerializeObject(pendingApproval);
+                SelectListItem item = new SelectListItem { Text = uri, Value = json, Selected = false };
+                items.Add(item);
+            }
+
+            ViewBag.message = "";
+            ApproveModel model = new ApproveModel { Images = items };
+            return View(model);
+        }
+
+
+        public async Task<IActionResult> Approve(ApproveModel model)
+        {
+            CheckAda();
+
+            foreach (var item in model.Images)
+            {
+                PendingApproval pending = JsonConvert.DeserializeObject<PendingApproval>(item.Value);
+                if (item.Selected)
+                {
+                    await imageStorage.ApproveAsync(pending);
+                }
+                else
+                {
+                    await imageStorage.RejectAsync(pending);
+                }
+            }
+
+            ViewBag.message = "Images approved!";
+
+            return View(new ApproveModel { Images = new List<SelectListItem>() }); ;
+        }
+
     }
 
 }
-
-
-
-//ListByUserModel userView = new ListByUserModel();
-//IList<Image> images = await imageStorage.GetAllImagesInfoAsync();
-//var userId = (await GetLoggedInUser()).Id;

@@ -1,27 +1,15 @@
-﻿
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
-
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.EntityFrameworkCore;
-
-using ImageSharingWithCloud.Models;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using ImageSharingWithServerless.Models;
+using ImageSharingModels;
 
-namespace ImageSharingWithCloud.DAL
+namespace ImageSharingWithServerless.DAL
 {
     public  class ApplicationDbInitializer
     {
         private ApplicationDbContext db;
         private IImageStorage imageStorage;
-        private ILogContext _logContext;
+        private ILogContext logContext;
         private ILogger<ApplicationDbInitializer> logger;
         public ApplicationDbInitializer(ApplicationDbContext db, 
                                         IImageStorage imageStorage,
@@ -30,75 +18,51 @@ namespace ImageSharingWithCloud.DAL
         {
             this.db = db;
             this.imageStorage = imageStorage;   
-            this._logContext = logContext;
+            this.logContext = logContext;
             this.logger = logger;
         }
 
         public async Task SeedDatabase(IServiceProvider serviceProvider)
         {
-            
-            logger.LogInformation("start database seeding process...");
             /*
              * Initialize databases.
              */
-            await db.Database.MigrateAsync();
+            logger.LogInformation("Initializing databases and blob storage....");
             await imageStorage.InitImageStorage();
 
-            /*
-             * Clear any existing data from the databases.
-             */
-            
-            IList<Image> images = await imageStorage.GetAllImagesInfoAsync();
-            foreach (Image image in images)
-            {
-                await imageStorage.RemoveImageAsync(image);
-            }
-            
-            
-
+            logger.LogInformation("Clearing out the user database....");
+            await db.Database.MigrateAsync();
             db.RemoveRange(db.Users);
             await db.SaveChangesAsync();
 
-            logger.LogInformation("Adding role: User");
+            logger.LogDebug("Adding role: User");
             var idResult = await CreateRole(serviceProvider, "User");
             if (!idResult.Succeeded)
             {
-                logger.LogInformation("Failed to create User role!");
+                logger.LogDebug("Failed to create User role!");
             }
 
             // TODO add other roles
-            logger.LogInformation("Adding role: Admin");
-            idResult = await CreateRole(serviceProvider, "Admin");
+
+
+            logger.LogDebug("Adding user: jfk");
+            idResult = await CreateAccount(serviceProvider, "jfk@example.org", "jfk123", "Admin");
             if (!idResult.Succeeded)
             {
-                logger.LogInformation("Failed to create Admin role!");
+                logger.LogDebug("Failed to create jfk user!");
             }
 
-            logger.LogInformation("Adding user: jfk");
-            idResult = await CreateAccount(serviceProvider, "jfk@example.org", "@Test123", "Admin");
+            logger.LogDebug("Adding user: nixon");
+            idResult = await CreateAccount(serviceProvider, "nixon@example.org", "nixon123", "User");
             if (!idResult.Succeeded)
             {
-                logger.LogInformation("Failed to create jfk user!");
-            }
-
-            logger.LogInformation("Adding user: nixon");
-            idResult = await CreateAccount(serviceProvider, "nixon@example.org", "@Test123", "User");
-            if (!idResult.Succeeded)
-            {
-                logger.LogInformation("Failed to create nixon user!");
+                logger.LogDebug("Failed to create nixon user!");
             }
 
             // TODO add other users and assign more roles
-            logger.LogInformation("Adding user: ulinchen");
-            idResult = await CreateAccount(serviceProvider, "userWithMultipleRoles@example.org", "@Test123", "Admin");
-            if (!idResult.Succeeded)
-            {
-                logger.LogInformation("Failed to create userWithMultipleRoles user!");
-            }
+
 
             await db.SaveChangesAsync();
-            
-            logger.LogInformation("Seeding process finished.");
 
         }
 

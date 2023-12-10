@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
-using ImageSharingWithCloud.DAL;
+using ImageSharingWithServerless.DAL;
 using Microsoft.AspNetCore.Identity;
-using ImageSharingWithCloud.Models;
+using ImageSharingWithServerless.Models;
+using ImageSharingModels;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace ImageSharingWithCloud.Controllers
+namespace ImageSharingWithServerless.Controllers
 {
     public class BaseController : Controller
     {

@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ImageSharingWithCloud.Models;
+using ImageSharingWithServerless.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
-namespace ImageSharingWithCloud.DAL
+namespace ImageSharingWithServerless.DAL
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {

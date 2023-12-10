@@ -14,7 +14,7 @@
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/@SiteCss" asp-append-version="true" />
-    <link rel="stylesheet" href="~/ImageSharingWithCloud.styles.css" asp-append-version="true" />
+    @*<link rel="stylesheet" href="~/ImageSharingWithServerless.styles.css" asp-append-version="true" />*@
 
     <!-- The default is to have input validation done on the client side, using these libraries. -->
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
@@ -38,6 +38,7 @@ s</head>
                 <li><a asp-area="" asp-controller="Images" asp-action="ListAll">List All</a></li>
                 <li><a asp-area="" asp-controller="Images" asp-action="ListByUser">List by User</a></li>
                 <li><a asp-area="" asp-controller="Images" asp-action="ImageViews">Image Views</a></li>
+                <li><a asp-area="" asp-controller="Images" asp-action="Approve">Approve</a></li>
                 <li><a asp-area="" asp-controller="Account" asp-action="Logout">Logout</a></li>
             </ul>
         </nav>
@@ -54,7 +55,7 @@ s</head>
             @RenderBody()
         </article>
         <footer id="footer">
-            <p>&copy; @DateTime.Now.Year Youlin Chen CWID: 20012293 </p>
+            <p>&copy; @DateTime.Now.Year Your Name Here</p>
         </footer>
     </div>
 

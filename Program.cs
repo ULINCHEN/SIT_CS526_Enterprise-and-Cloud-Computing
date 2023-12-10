@@ -1,17 +1,9 @@
 using Azure.Identity;
-using ImageSharingWithCloud.DAL;
-using ImageSharingWithCloud.Models;
+using ImageSharingWithServerless.DAL;
+using ImageSharingWithServerless.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Azure;
-using System;
-using System.Configuration;
-using Azure.Data.Tables;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration.Ini;
-
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -38,7 +30,6 @@ builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 builder.Logging.AddAzureWebAppDiagnostics();
 
-
 /*
  * If in production mode, add secret access keys that will be stored in Azure Key Vault.
  */
@@ -59,52 +50,55 @@ if (builder.Environment.IsProduction())
 /*
  * Connection string for SQL database; append credentials if present (from Azure Vault).
  */
-//Console.WriteLine("StorageConfig.ApplicationDbConnString -> " + configuration[StorageConfig.ApplicationDbConnString] );
-
-
-
+string dbConnectionString = builder.Configuration[StorageConfig.ApplicationDbConnString];
+if (dbConnectionString == null)
+{
+    throw new ArgumentNullException("Missing SQL connection string in configuration: " + StorageConfig.ApplicationDbConnString);
+}
+string database = builder.Configuration[StorageConfig.ApplicationDbDatabase];
+if (database == null)
+{
+    throw new ArgumentNullException("Missing database name in configuration: " + StorageConfig.ApplicationDbDatabase);
+}
+string dbUser = builder.Configuration[StorageConfig.ApplicationDbUser];
+string dbPassword = builder.Configuration[StorageConfig.ApplicationDbPassword];
+dbConnectionString = StorageConfig.getDatabaseConnectionString(dbConnectionString, database, dbUser, dbPassword);
 
 // TODO Add database context & enable saving sensitive data in the log (not for production use!)
 // For SQL Database, allow for db connection sometimes being lost
-
-var dbConnectionString = builder.Configuration[StorageConfig.ApplicationDbConnString];
-
-//builder.Services.AddSingleton<ILogContext, LogContext>();
-//builder.Services.AddSingleton<IImageStorage,ImageStorage>();
-//Console.WriteLine("StorageConfig.ApplicationDbConnString -> " + dbConnectionString );
-
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-{
-    
-    options.UseSqlServer(dbConnectionString, option => { option.EnableRetryOnFailure(); }); // allow connection sometimes lost
-    options.EnableSensitiveDataLogging(); // only for testing enviroment
-    
+builder.Services.AddDbContext<ApplicationDbContext>(options => {
+    options.UseSqlServer(dbConnectionString, options => options.EnableRetryOnFailure());
+    options.EnableSensitiveDataLogging(true);
 });
+
 // Replacement for database error page
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // TODO add Identity service
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
-
-
-
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireDigit = false;
+})
+    .AddEntityFrameworkStores<ApplicationDbContext>();
 
 /*
  * Best practice is to have a single instance of a Cosmos client for an application.
  * Use dependency injection to inject this single instance into ImageStorage repository.
  */
 CosmosClient imageDbClient = ImageStorage.GetImageDbClient(builder.Environment, builder.Configuration);
-builder.Services.AddSingleton<CosmosClient>(imageDbClient); // AddSingleton = one instance for entire app
+builder.Services.AddSingleton<CosmosClient>(imageDbClient);
 
 // Add our own service for managing access to logContext of image views
-builder.Services.AddScoped<ILogContext, LogContext>(); // AddScoped = one instance for per user
+builder.Services.AddScoped<ILogContext, LogContext>();
 
 // Add our own service for managing uploading of images to blob storage
 builder.Services.AddScoped<IImageStorage, ImageStorage>();
 
-builder.Services.AddScoped<ApplicationDbInitializer>();
 
 WebApplication app = builder.Build();
 
@@ -130,13 +124,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 /*
+ * Routes to actions for specific images, which require both user id (partition key) and image id.
+ */
+app.MapControllerRoute(
+    name: "image",
+    pattern: "Images/{action}/{userId}/{id}",
+    defaults: new { controller = "Images" });
+/*
  * Everything is configurable.
  */
 app.MapDefaultControllerRoute();
-
-//app.MapControllerRoute(
-//    name: "default",
-//    pattern: "{controller=Home}/{action=Index}/{Id?}");
 
 /*
  * TODO Seed the database: We need to manually inject the dependencies of the initalizer.
@@ -144,17 +141,17 @@ app.MapDefaultControllerRoute();
  * More on dependency injection: https://learn.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection
  * More on DbContext lifetime: https://learn.microsoft.com/en-us/ef/core/dbcontext-configuration/
  */
+using (var serviceScope = app.Services.CreateScope())
+{
+    var serviceProvider = serviceScope.ServiceProvider;
 
-using (var scope = app.Services.CreateScope())
-{ 
-    var init = scope.ServiceProvider.GetRequiredService<ApplicationDbInitializer>();
-    
-    
-    
-    await init.SeedDatabase(scope.ServiceProvider.GetRequiredService<IServiceProvider>());
+    var db = serviceProvider.GetRequiredService<ApplicationDbContext>();
+    var imageStorage = serviceProvider.GetRequiredService<IImageStorage>();
+    var logContext = serviceProvider.GetRequiredService<ILogContext>();
+    var logger = serviceProvider.GetRequiredService<ILogger<ApplicationDbInitializer>>();
+
+    await new ApplicationDbInitializer(db, imageStorage, logContext, logger).SeedDatabase(serviceProvider);
 }
-
-
 
 /*
  * Finally, run the application!

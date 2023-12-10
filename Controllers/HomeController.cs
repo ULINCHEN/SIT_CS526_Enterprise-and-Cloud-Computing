@@ -5,12 +5,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using ImageSharingWithCloud.Models;
-using ImageSharingWithCloud.Controllers;
+using ImageSharingWithServerless.Models;
+using ImageSharingWithServerless.Models.ViewModels;
+using ImageSharingWithServerless.Controllers;
 using Microsoft.AspNetCore.Identity;
-using ImageSharingWithCloud.DAL;
+using ImageSharingWithServerless.DAL;
 
-namespace ImageSharingWithCloud.Controllers
+namespace ImageSharingWithServerless.Controllers
 {
     public class HomeController : BaseController
     {
